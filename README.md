@@ -151,6 +151,10 @@ Here’s a minimal HTML snippet you can use:
 </div>
 ```
 
+you get this :
+
+![Full editor view](./full.png)
+
 ## 🧠 Notes
 
 - Tested by inspection with **wasm-bindgen** and served using **basic-http-server**
