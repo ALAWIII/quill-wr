@@ -3,8 +3,6 @@
 A **thin Rust→WASM wrapper** around the popular [**Quill**](https://quilljs.com) rich text editor.
 This crate allows you to initialize and interact with a Quill editor instance directly from Rust via **wasm-bindgen**.
 
----
-
 ## 🚀 Overview
 
 This project aims to provide Rust bindings for Quill.js — a modern, rich text editor built for the web.
@@ -16,14 +14,17 @@ You can control the editor (get/set contents, listen to events, apply formats, e
 - ⚠️ Some methods like `get_semantic_html()` are **broken or unimplemented**
 - 🚧 Lacks error handling, proper testing, and structured abstractions
 
----
+## 🧩 TODO / Roadmap
+
+- [ ] Implement missing methods (e.g. `get_semantic_html` ,`align` ,`size`)
+- [ ] Add structured error handling
+- [ ] Improve internal architecture
+- [ ] Add proper testing
 
 ## 📚 Learn Quill
 
 You can find the official Quill documentation here:
 👉 [https://quilljs.com/docs/quickstart](https://quilljs.com/docs/quickstart)
-
----
 
 ## 🧪 Example Usage
 
@@ -98,8 +99,6 @@ pub fn test_quill() {
 }
 ```
 
----
-
 ## 🧰 Example HTML Setup
 
 To set up a full toolbar, refer to `tests/test.html` in the repository.
@@ -151,17 +150,6 @@ Here’s a minimal HTML snippet you can use:
   </span>
 </div>
 ```
-
----
-
-## 🧩 TODO / Roadmap
-
-- [ ] Implement missing methods (e.g. `get_semantic_html` ,`align` ,`size`)
-- [ ] Add structured error handling
-- [ ] Improve internal architecture
-- [ ] Add proper testing
-
----
 
 ## 🧠 Notes
 
