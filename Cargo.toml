@@ -1,6 +1,6 @@
 [package]
 name = "quill-wr"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 authors = ["allawiii <alighraibeh87@gmail.com>"]
 description = "A thin Rust→WASM wrapper around the popular Quill.js rich text editor."
@@ -26,3 +26,6 @@ js-sys = "0.3.82"
 name = "quill_wr"
 path = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
+
+[features]
+wasm-tests = []

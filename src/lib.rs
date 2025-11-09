@@ -3,5 +3,5 @@ mod styling;
 pub use quil_api::*;
 pub use styling::*;
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "wasm-tests")]
 mod test_utils;
