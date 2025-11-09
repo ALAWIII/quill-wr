@@ -1,8 +1,35 @@
+use js_sys::Object;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::collections::HashMap;
-use wasm_bindgen::JsValue;
+use serde_json::{Number, Value};
+use serde_wasm_bindgen::to_value;
+use std::{collections::HashMap, fmt::Display, str::FromStr};
+use wasm_bindgen::{JsCast, JsValue};
 
+pub fn create_js_object<T: Serialize>(key: &str, value: T) -> JsValue {
+    let obj = Object::new();
+    js_sys::Reflect::set(
+        &obj,
+        &JsValue::from_str(key),
+        &to_value(&value).expect("failed"),
+    )
+    .expect("failed to create JS object ");
+    obj.unchecked_into()
+}
+pub fn hash_map_to_js_object<G: Serialize>(map: &HashMap<String, G>) -> JsValue {
+    let obj = Object::new();
+    for (k, v) in map {
+        js_sys::Reflect::set(&obj, &JsValue::from_str(k), &to_value(v).unwrap()).unwrap();
+    }
+    obj.unchecked_into()
+}
+
+pub fn inlines_to_map(attrs: &[Inline]) -> HashMap<String, Value> {
+    attrs.iter().map(|a| a.as_kv()).collect()
+}
+
+pub fn embed_attrs_to_map(attrs: &[EmbedAttr]) -> HashMap<String, Value> {
+    attrs.iter().map(|a| a.as_kv()).collect()
+}
 pub fn jsvalue_to_inlines(value: JsValue) -> Vec<Inline> {
     // Try to parse JsValue as { key: value } map
     let Ok(map): Result<HashMap<String, Value>, _> = serde_wasm_bindgen::from_value(value) else {
@@ -20,7 +47,7 @@ pub fn jsvalue_to_inlines(value: JsValue) -> Vec<Inline> {
             ("background", Value::String(s)) => Some(Inline::BgColor(s)),
             ("color", Value::String(s)) => Some(Inline::Color(s)),
             ("font", Value::String(s)) => Some(Inline::Font(s)),
-            ("size", Value::String(s)) => Some(Inline::Size(s)),
+            ("size", Value::Number(s)) => Some(Inline::Size(s.as_f64().unwrap_or_default())),
             ("script", Value::String(ref s)) if s == "sub" => Some(Inline::Sub),
             ("script", Value::String(ref s)) if s == "super" => Some(Inline::Sup),
             ("align", Value::String(s)) => Some(Inline::Align(s)),
@@ -29,7 +56,7 @@ pub fn jsvalue_to_inlines(value: JsValue) -> Vec<Inline> {
         .collect()
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)] // ✅ ADDED: Hash + Eq for HashSet
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)] // ✅ ADDED: Hash + Eq for HashSet
 pub enum Inline {
     Bold,
     Italic,
@@ -44,7 +71,7 @@ pub enum Inline {
     /// font family
     Font(String),
     /// text size
-    Size(String),
+    Size(f64),
     Sub,
     Sup,
     Align(String),
@@ -64,7 +91,7 @@ impl Inline {
             BgColor(v) => ("background".into(), Value::String(v.clone())),
             Color(v) => ("color".into(), Value::String(v.clone())),
             Font(v) => ("font".into(), Value::String(v.clone())),
-            Size(v) => ("size".into(), Value::String(v.clone())),
+            Size(v) => ("size".into(), Value::Number(Number::from_f64(*v).unwrap())),
             Sub => ("script".into(), Value::String("sub".into())),
             Sup => ("script".into(), Value::String("super".into())),
             Align(v) => ("align".into(), Value::String(v.clone())),

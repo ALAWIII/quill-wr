@@ -1,4 +1,5 @@
 use dashmap::DashMap;
+use js_sys::Function;
 use serde::Deserialize;
 use serde_wasm_bindgen::to_value;
 use uuid::Uuid;
@@ -6,9 +7,12 @@ use wasm_bindgen::{JsCast, JsValue, prelude::Closure};
 use web_sys::{Node, js_sys};
 
 use super::{Delta, Quill};
-use crate::{DeltaEditor, Embeds, Inline, QuillOptions, inlines_to_map, jsvalue_to_inlines};
+use crate::{
+    DeltaEditor, Embeds, Inline, QuillOptions, hash_map_to_js_object, inlines_to_map,
+    jsvalue_to_inlines,
+};
 
-use std::{fmt::Display, rc::Rc, sync::Arc};
+use std::fmt::Display;
 #[derive(Debug, Deserialize)]
 pub struct Selection {
     pub index: u32,
@@ -111,7 +115,7 @@ impl Display for EventChange {
 }
 pub struct QuillEditor {
     /// todo : consider implementing a wrapper to support different closure kinds (FnMut,FnOnce)
-    handlers: DashMap<Uuid, (String, Closure<dyn FnMut(&js_sys::Array)>)>,
+    handlers: DashMap<Uuid, (String, Function)>,
     quill: Quill,
 }
 impl QuillEditor {
@@ -153,6 +157,8 @@ impl QuillEditor {
         self.quill
             .get_text(index.unwrap_or(0), length.unwrap_or(self.get_length()))
     }
+    /// this method is perfect for serializing content with styles/format to json!!
+    ///
     /// default index=0 , length = get_length()
     pub fn get_content(&self, index: Option<u32>, length: Option<u32>) -> DeltaEditor {
         let delta = self
@@ -160,10 +166,15 @@ impl QuillEditor {
             .get_contents(index.unwrap_or(0), length.unwrap_or(self.get_length()));
         DeltaEditor::from_delta(delta)
     }
-    /// default index=0 , length = get_length()
+    /// # warning
+    /// broken unstable method
+    ///
+    ///  default index=0 , length = get_length()
     pub fn get_semantic_html(&self, index: Option<u32>, length: Option<u32>) -> String {
-        self.quill
-            .get_semantic_html(index.unwrap_or(0), length.unwrap_or(self.get_length()))
+        self.quill.get_semantic_html(
+            &to_value(&index.unwrap_or(0)).expect("Failed to convert to js"),
+            length.unwrap_or(self.get_length()),
+        )
     }
     /// source defaults to 'api'
     pub fn insert_embed(&self, index: u32, type_m: Embeds, source: Option<Source>) -> DeltaEditor {
@@ -181,15 +192,16 @@ impl QuillEditor {
         formats: &[Inline],
         source: Option<Source>,
     ) -> DeltaEditor {
-        let formats = to_value(&inlines_to_map(formats)).expect("Failed to serialize to JsValue");
+        let formats = &inlines_to_map(formats);
+        let js_formats = hash_map_to_js_object(formats);
         DeltaEditor::from_delta(self.quill.insert_text(
             index,
             text,
-            &formats,
+            &js_formats,
             &source.unwrap_or(Source::Api).to_string(),
         ))
     }
-    pub fn set_content(&self, delta: DeltaEditor, source: Option<Source>) -> DeltaEditor {
+    pub fn set_content(&self, delta: &DeltaEditor, source: Option<Source>) -> DeltaEditor {
         DeltaEditor::from_delta(self.quill.set_contents(
             delta.get_inner_delta(),
             &source.unwrap_or(Source::Api).to_string(),
@@ -312,34 +324,35 @@ impl QuillEditor {
     }
 
     //--------------------------event methods --------------------------
-    pub fn on(&self, evt_name: &str, mut handler: impl FnMut(Vec<JsValue>) + 'static) {
+    pub fn on(&self, evt_name: &str, mut handler: impl FnMut(Vec<JsValue>) + 'static) -> Uuid {
         let wrapper = Closure::wrap(Box::new(move |args: &js_sys::Array| {
             // Collect all non-undefined arguments
             let vec: Vec<JsValue> = args.to_vec();
             handler(vec);
         }) as Box<dyn FnMut(&js_sys::Array)>);
         let func = wrapper.as_ref().unchecked_ref::<js_sys::Function>();
+        let id = Uuid::new_v4();
 
+        self.handlers
+            .insert(id, (evt_name.to_string(), func.clone()));
         self.quill.on_event(evt_name, func);
         wrapper.forget();
+        id
     }
-    pub fn once(&self, evnt_name: &str, mut handler: impl FnMut(Vec<JsValue>) + 'static) -> Uuid {
+    pub fn once(&self, evnt_name: &str, mut handler: impl FnMut(Vec<JsValue>) + 'static) {
         let wrapper = Closure::wrap(Box::new(move |args: &js_sys::Array| {
             let vec: Vec<JsValue> = args.to_vec();
             handler(vec);
         }) as Box<dyn FnMut(&js_sys::Array)>);
-        let id = Uuid::new_v4();
         let func = wrapper.as_ref().unchecked_ref::<js_sys::Function>();
-        self.handlers
-            .insert(id, (evnt_name.to_string(), func.clone()));
+
         self.quill.once_event(evnt_name, func);
         wrapper.forget();
     }
     // its job is to disconnect the handler
     pub fn off(&self, id: Uuid) {
-        if let Some((id, (evnt_name, closure))) = self.handlers.remove(&id) {
-            self.quill
-                .off_event(&evnt_name, closure.as_ref().unchecked_ref());
+        if let Some((id, (evnt_name, func))) = self.handlers.remove(&id) {
+            self.quill.off_event(&evnt_name, &func);
         }
     }
     //-------------------------------  ---------------------------------

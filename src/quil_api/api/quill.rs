@@ -35,7 +35,7 @@ extern "C" {
 
     #[wasm_bindgen(method, js_name = "getSemanticHTML")]
     /// index=0 , length = full as default values
-    pub fn get_semantic_html(this: &Quill, index: u32, length: u32) -> String;
+    pub fn get_semantic_html(this: &Quill, index: &JsValue, length: u32) -> String;
 
     #[wasm_bindgen(method, js_name = "insertEmbed")]
     /// default soruce="api"

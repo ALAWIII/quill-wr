@@ -4,19 +4,12 @@ use serde_wasm_bindgen::to_value;
 use std::collections::HashMap;
 use wasm_bindgen::{JsCast, JsValue};
 
-use crate::{EmbedAttr, Embeds, Inline, quil_api::api::Delta};
+use crate::{EmbedAttr, Embeds, Inline, embed_attrs_to_map, inlines_to_map, quil_api::api::Delta};
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DeltaOps {
     Insert(String, Vec<Inline>),
     Delete(usize),
     Retain(usize, Vec<Inline>),
-}
-pub fn inlines_to_map(attrs: &[Inline]) -> HashMap<String, Value> {
-    attrs.iter().map(|a| a.as_kv()).collect()
-}
-
-pub fn embed_attrs_to_map(attrs: &[EmbedAttr]) -> HashMap<String, Value> {
-    attrs.iter().map(|a| a.as_kv()).collect()
 }
 
 fn ops_to_jsvalue(ops: &[DeltaOps]) -> JsValue {
